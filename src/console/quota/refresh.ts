@@ -19,7 +19,33 @@ import { GLOBAL_QUOTA_LENS, setCachedQuota } from "./cache";
 import { record } from "../../providers/authentication/oauth-flow-store";
 
 /** Why an account quota refresh failed; `null` means the fetch succeeded. */
-export type QuotaRefreshFailureCode = "missing_credential" | "quota_fetch_failed";
+export type QuotaRefreshFailureCode =
+  | "missing_credential"
+  | "quota_fetch_failed"
+  | "quota_fetch_timeout";
+
+/**
+ * Whether a quota failure describes the transport rather than the account.
+ *
+ * A probe that never reached the upstream — aborted by our own budget, or a
+ * socket that never connected — says nothing about the credential. Only the
+ * upstream's own answer does, so callers must keep the two apart before they
+ * charge a failure to the account.
+ */
+export function isQuotaTransportFailure(error: string | null | undefined): boolean {
+  if (typeof error !== "string") return false;
+  const value = error.toLowerCase();
+  return (
+    value.includes("timed out") ||
+    value.includes("timeout") ||
+    value.includes("aborted") ||
+    value.includes("econnrefused") ||
+    value.includes("enotfound") ||
+    value.includes("econnreset") ||
+    value.includes("fetch failed") ||
+    value.includes("network")
+  );
+}
 
 export interface QuotaRefreshOutcome {
   readonly quota: ProviderQuotaResult;
@@ -132,6 +158,29 @@ export async function recordAccountCheck(
         lastErrorCategory: null,
         lastErrorAt: null,
         consecutiveFailures: 0,
+      })
+      .where(activeOnly);
+    return;
+  }
+  // A transport failure says nothing about the account. When the probe never
+  // reached the upstream — aborted by our own budget, or a network error —
+  // the row is annotated so the dashboard can show what happened, but the
+  // failure counter is left alone. Counting it parked every account of a
+  // provider whose endpoint our egress cannot reach, which took a working
+  // credential out of rotation for the cooldown window and reported the
+  // account as broken.
+  const transportFailure =
+    outcome.category === "timeout" ||
+    outcome.category === "aborted" ||
+    outcome.category === "network_error" ||
+    outcome.category === "quota_fetch_timeout";
+  if (transportFailure) {
+    await db
+      .update(providerAccounts)
+      .set({
+        lastError: (outcome.error ?? "Account check failed").slice(0, 500),
+        lastErrorCategory: outcome.category ?? "check_failed",
+        lastErrorAt: new Date(),
       })
       .where(activeOnly);
     return;
@@ -345,7 +394,11 @@ async function runQuotaRefresh(
         error: error instanceof Error ? error.message : "Failed to refresh quota",
       };
     }
-    failure = quota.error === null ? null : "quota_fetch_failed";
+    failure = quota.error === null
+      ? null
+      : isQuotaTransportFailure(quota.error)
+        ? "quota_fetch_timeout"
+        : "quota_fetch_failed";
   }
 
   // Cache even a failed fetch: the error view ("credential expired", "quota
