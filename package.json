@@ -39,7 +39,11 @@
   "dependencies": {
     "@bufbuild/protobuf": "^2.14.1",
     "@electric-sql/pglite": "^0.5.8",
+    "@prisma/composer": "0.28.0",
+    "@prisma/composer-prisma-cloud": "0.28.0",
+    "alchemy": "2.0.0-beta.78",
     "drizzle-orm": "0.45.2",
+    "effect": "4.0.0-rc.115",
     "elysia": "^2.0.0-beta.16",
     "exact-mirror": "^1.2.6",
     "ioredis": "6.0.0",
@@ -56,6 +60,18 @@
     "@types/ws": "8.18.1",
     "bun-types": "1.4.0",
     "concurrently": "^10.0.5",
+    "prisma": "8.0.0-rc.21",
     "typescript": "5.9.2"
+  },
+  "overrides": {
+    "@effect/platform-bun": "4.0.0-rc.115",
+    "@effect/platform-node": "4.0.0-rc.115",
+    "@effect/platform-node-shared": "4.0.0-rc.115",
+    "@effect/sql-d1": "4.0.0-rc.115",
+    "@effect/sql-mysql2": "4.0.0-rc.115",
+    "@effect/sql-pg": "4.0.0-rc.115",
+    "@effect/sql-sqlite-do": "4.0.0-rc.115",
+    "@effect/vitest": "4.0.0-rc.115",
+    "effect": "4.0.0-rc.115"
   }
 }
