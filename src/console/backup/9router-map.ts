@@ -56,6 +56,15 @@ export const UPSTREAM_PROVIDERS: Readonly<Record<string, string>> = {
   "gemini-cli": "gemini",
   github: "github",
   kiro: "kiro",
+  // The router spells these ids exactly as we do, so they need a map entry
+  // only to stop `resolveProviderId` from reporting them as unknown and
+  // dropping their accounts on import. We carry all these providers
+  // (`src/providers/integrations/buddy`, `/muse`, `src/providers/specs/tokenharbor.ts`),
+  // so an unlisted id here discarded credentials that had a home.
+  cb: "cb",
+  cbcn: "cbcn",
+  muse: "muse",
+  tokenharbor: "tokenharbor",
 };
 
 /**
