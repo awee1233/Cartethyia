@@ -28,8 +28,18 @@ export interface QuotaRefreshOutcome {
   readonly accountLabel?: string;
 }
 
-/** Abort budget for one upstream quota fetch. */
-export const QUOTA_REFRESH_TIMEOUT_MS = 15_000;
+/**
+ * Abort budget for one upstream quota fetch.
+ *
+ * Sized for the worst case a quota probe can legitimately hit, not just the
+ * upstream round trip: a provider whose request carries a resolved client
+ * version (`cb`, for one) first discovers that version from a registry. The
+ * discovery walks two sources at 4s each and is retried twice, so a probe on a
+ * cold cache can spend ~24s before the upstream call is even attempted. At the
+ * previous 15s budget those probes aborted with a timeout while the credential
+ * and endpoint were both fine, which read as a broken account.
+ */
+export const QUOTA_REFRESH_TIMEOUT_MS = 45_000;
 
 /**
  * Consecutive quota refusals before an account is parked. One refusal can be
