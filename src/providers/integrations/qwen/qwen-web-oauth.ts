@@ -24,6 +24,12 @@
  */
 import { GatewayError } from "../../../protocol/gateway-error";
 import { truncateUpstreamText } from "../../authentication/oauth-flow-store";
+import type {
+  OAuthExchangeResult,
+  OAuthImportInput,
+  OAuthLoginClient,
+  OAuthLoginField,
+} from "../../authentication/oauth-flow-store";
 import type { OAuthTokenRefreshResult } from "../../authentication/oauth-refresh-service";
 import type { FetchLike } from "../../authentication/oauth-client";
 
@@ -70,13 +76,58 @@ export interface QwenWebOAuthOptions {
   readonly refreshUrl?: string;
 }
 
-class QwenWebOAuthRefresher {
+class QwenWebOAuthRefresher implements OAuthLoginClient {
   private readonly fetchFn: FetchLike;
   private readonly refreshUrl: string;
+
+  /** Import-only client: there is no interactive authorize or device flow. */
+  readonly supportsDeviceCode = false;
+  readonly supportsBrowserCode = false;
+
+  /**
+   * The operator pastes what the web app shows. Two values are needed because
+   * the access token alone cannot outlive its fifteen minutes — without the
+   * refresh token the account would work once and then go dark.
+   */
+  readonly importFields: readonly OAuthLoginField[] = [
+    {
+      key: "refreshToken",
+      label: "Refresh token (chat.qwen.ai → Local Storage → token)",
+      required: true,
+      secret: true,
+      placeholder: "eyJhbGciOi…",
+    },
+  ];
 
   constructor(options: QwenWebOAuthOptions = {}) {
     this.fetchFn = options.fetch ?? (globalThis.fetch as unknown as FetchLike);
     this.refreshUrl = options.refreshUrl ?? QWEN_AUTH_REFRESH_URL;
+  }
+
+  /**
+   * Accepts the pasted credential, mints a usable access token from it, and
+   * hands both back for persistence.
+   *
+   * The refresh token is validated by actually using it: a refresh grant is
+   * the only upstream call that proves the token is live, and a stored
+   * credential that fails here would otherwise be discovered at dispatch time.
+   */
+  async importCredential(input: OAuthImportInput): Promise<OAuthExchangeResult> {
+    const refreshToken = resolveRefreshToken(input);
+    if (refreshToken.length === 0) {
+      throw new Error(
+        "Paste a Qwen refresh token (or a JSON blob carrying accessToken and refreshToken)",
+      );
+    }
+
+    const refreshed = await this.refresh(refreshToken);
+    return {
+      access: refreshed.access,
+      // Always present on this provider: the grant rotates the token.
+      refresh: refreshed.refresh ?? refreshToken,
+      expiresAt: refreshed.expiresAt,
+      ...(input.accountLabel ? { accountLabel: input.accountLabel } : {}),
+    };
   }
 
   async refresh(
@@ -171,6 +222,37 @@ class QwenWebOAuthRefresher {
         details || code || `HTTP ${response.status}`, 160)})`,
     );
   }
+}
+
+/**
+ * Pulls the refresh token out of the pasted credential.
+ *
+ * Two shapes are accepted because both are natural to paste: the bare refresh
+ * token string, and a JSON blob carrying `accessToken`/`refreshToken` (what a
+ * scanner or an exported session produces). A bare access token is not
+ * accepted — it would work for fifteen minutes and then silently fail.
+ */
+function resolveRefreshToken(input: OAuthImportInput): string {
+  const raw = input.credential.trim();
+  if (raw.length === 0) return "";
+
+  const fromField = (input.fields["refreshToken"] ?? "").trim();
+  if (fromField.length > 0) return fromField;
+
+  if (!raw.startsWith("{")) return raw;
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    for (const key of ["refresh_token", "refreshToken"]) {
+      const value = parsed[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+  } catch {
+    return "";
+  }
+  return "";
 }
 
 /** Expiry for a refresh that either reported a lifetime or did not. */
