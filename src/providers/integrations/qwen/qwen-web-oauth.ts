@@ -57,17 +57,28 @@ interface QwenRefreshPayload {
   };
 }
 
-/** Auth-surface headers. `source: web` is required; `qwen_app` is rejected. */
+/**
+ * Auth-surface headers.
+ *
+ * These mirror the web client's own auth calls exactly. The set matters more
+ * than it looks: the auth host answers a *smaller* set with
+ * `Invalid request header` at HTTP 200 — an in-band rejection that reads like a
+ * dead credential. In particular `Timezone` and `Accept-Language` are required
+ * even though nothing in the response depends on either.
+ *
+ * `source: web` is the identity this surface expects; the chat surface wants
+ * `qwen_app` instead, and sending that here is rejected the same way.
+ */
 function authHeaders(): Record<string, string> {
   return {
-    accept: "application/json",
-    "content-type": "application/json",
-    "accept-language": "en-US,en;q=0.9",
-    version: QWEN_CLIENT_VERSION,
+    Accept: "application/json, text/plain, */*",
+    "Content-Type": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    Version: QWEN_CLIENT_VERSION,
     source: "web",
-    "x-request-id": String(Date.now()),
+    "X-Request-Id": String(Date.now()),
+    Timezone: new Date().toUTCString(),
     "x-request-origin": "https://chat.qwen.ai",
-    origin: "https://chat.qwen.ai",
   };
 }
 
