@@ -231,6 +231,13 @@ export const PROVIDER_CAPABILITIES = {
   "qwen-web": {
     loadAdapter: async () => (await import("./integrations/qwen/qwen-web")).qwenWebAdapter,
     loadModels: async () => (await import("./integrations/qwen/qwen-web")).QWEN_WEB_MODELS,
+    // The access token lasts about fifteen minutes, so the refresh path is not
+    // optional here — without it every stored credential is stale on arrival.
+    loadAuthentication: oauthCapability(
+      () => import("./integrations/qwen/qwen-web-oauth"),
+      "qwenWebOAuthClient",
+      { withRefresher: true },
+    ),
   },
   meta: {
     loadAdapter: async () => (await import("./integrations/meta/meta")).metaAdapter,
