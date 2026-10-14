@@ -190,6 +190,19 @@ const RAW_BUNDLED_PROVIDER_METADATA = [
     credentialUrl: "https://chat.qwen.ai",
   },
   {
+    // Qwen Chat's web application: one turn is two calls (mint a `chat_id`, then
+    // stream the completion) and the WAF only answers the second when the caller
+    // repeats the browser identity headers. It is a separate id from
+    // `qwen-portal` because the credential is a web bearer token rather than a
+    // dashboard API key, and the roster and the endpoint differ.
+    id: "qwen-web",
+    displayName: "Qwen Web",
+    baseUrl: "https://chat.qwen.ai",
+    credentialUrl: "https://chat.qwen.ai",
+    credentialHint:
+      "Open chat.qwen.ai, sign in, then DevTools → Application → Local Storage → copy the `token` value (or the `tongyi_sso_ticket` cookie).",
+  },
+  {
     // MiniMax serves its models over the Anthropic Messages wire at an
     // `/anthropic` root, not the OpenAI chat wire. The token plans are the same
     // surface with a subscription key rather than a pay-as-you-go one, so they

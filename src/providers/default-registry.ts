@@ -228,6 +228,10 @@ export const PROVIDER_CAPABILITIES = {
     loadAuthentication: oauthCapability(() => import("./integrations/muse/muse-oauth"), "museCodeOAuthClient", { withRefresher: true }),
     loadQuotaCollector: quotaCapability(() => import("./integrations/muse/muse-quota"), "fetchMuseQuota"),
   },
+  "qwen-web": {
+    loadAdapter: async () => (await import("./integrations/qwen/qwen-web")).qwenWebAdapter,
+    loadModels: async () => (await import("./integrations/qwen/qwen-web")).QWEN_WEB_MODELS,
+  },
   meta: {
     loadAdapter: async () => (await import("./integrations/meta/meta")).metaAdapter,
     loadModels: async () => (await import("./integrations/meta/meta")).META_MODELS,
