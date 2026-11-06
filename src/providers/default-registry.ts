@@ -765,6 +765,13 @@ export const PROVIDER_CAPABILITIES = {
       headers: (credential) => ({ authorization: `Bearer ${credential}` }),
     }),
   },
+  "qwen-web": {
+    loadAdapter: async () => (await import("./integrations/qwen/qwen-web")).qwenWebAdapter,
+    loadModels: async () => (await import("./integrations/qwen/qwen-web")).QWEN_WEB_MODELS,
+    // Import-only client: there is no interactive authorize or device flow, so
+    // the console shows the refresh-token paste field instead.
+    loadAuthentication: oauthCapability(() => import("./integrations/qwen/qwen-web-oauth"), "qwenWebOAuthClient", { withRefresher: true }),
+  },
   // Live discovery over a static floor: `/v1/models` answers on this host, so a
   // synced account sees whatever the plan currently serves. The catalog keeps
   // the provider usable before anyone syncs.

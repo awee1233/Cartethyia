@@ -224,6 +224,21 @@ const RAW_BUNDLED_PROVIDER_METADATA = [
     credentialUrl: "https://chat.qwen.ai",
   },
   {
+    // Qwen Chat's own web surface (chat.qwen.ai), reached with the browser
+    // session token rather than a portal API key. Not OpenAI-compatible: one
+    // turn is two calls and a fixed browser-identity header set, which is why
+    // it carries its own adapter instead of the generic API-key path.
+    id: "qwen-web",
+    displayName: "Qwen Web",
+    baseUrl: "https://chat.qwen.ai",
+    hasAdapterUserAgent: true,
+    serviceKinds: ["llm"],
+    credentialUrl: "https://chat.qwen.ai",
+    credentialHint: "Signed in with a Qwen account through the web session import; the access token is refreshed automatically.",
+    // Per-account credential, so rotating the egress address buys nothing.
+    defaultSkipProxy: true,
+  },
+  {
     // MiniMax serves its models over the Anthropic Messages wire at an
     // `/anthropic` root, not the OpenAI chat wire. The token plans are the same
     // surface with a subscription key rather than a pay-as-you-go one, so they
